@@ -1,13 +1,16 @@
 package main
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
 )
+
+const noteDatabase = "database/notes/"
 
 type note struct {
 	ID    string `json:"id"`
@@ -21,7 +24,82 @@ var notes = []note{
 	{ID: "3", Title: "Make daily checklist", Body: ""},
 }
 
+func generateTestJson() {
+	file1, err1 := os.Create(noteDatabase + "1.json")
+	file2, err2 := os.Create(noteDatabase + "3.json")
+	file3, err3 := os.Create(noteDatabase + "5.json")
+
+	if err1 != nil || err2 != nil || err3 != nil {
+		fmt.Println("[Error] Could not generate test files")
+	}
+
+	file1.WriteString(`{"ID": "1", "Title": "Homework Plan", "Body": "Do Linear Algebra on Saturday and everything else on Friday"}`)
+	file2.WriteString(`{"ID": "3", "Title": "Make daily checklist", "Body": ""}`)
+	file3.WriteString(`{"ID": "5", "Title": "Sunday Reminder", "Body": "Go to church during the day!"}`)
+
+}
+
+func noteById(context *gin.Context) {
+	id := context.Param("id")
+
+	fileList, err := ioutil.ReadDir("database/notes/")
+
+	if err != nil {
+		return
+	}
+
+	for _, file := range fileList {
+		if file.Name() == id+".json" {
+			fmt.Println(`Retreiving file "` + file.Name() + `"`)
+			fileContent, _ := ioutil.ReadFile(noteDatabase + id + ".json")
+			var data interface{}
+			err2 := json.Unmarshal(fileContent, &data)
+			if err2 != nil {
+				return
+			}
+			fmt.Println(data)
+			context.IndentedJSON(http.StatusOK, data)
+
+			return
+		}
+	}
+
+	fmt.Println("File not found")
+
+}
+
 func getNotes(context *gin.Context) {
+	fileList, err := ioutil.ReadDir("database/notes/")
+
+	if err != nil {
+		return
+	}
+
+	var arr []interface{}
+
+	for _, file := range fileList {
+		fmt.Println(`Retreiving file "` + file.Name() + `"`)
+		fileContent, _ := ioutil.ReadFile(noteDatabase + file.Name())
+		var data interface{}
+		err2 := json.Unmarshal(fileContent, &data)
+		fmt.Println(data)
+
+		if err2 != nil {
+			return
+		}
+		arr = append(arr, data)
+		//context.IndentedJSON(http.StatusOK, data)
+
+	}
+
+	//json.Marshal(listOfObjects)
+
+	context.IndentedJSON(http.StatusOK, arr)
+
+}
+
+// Needs to be redone without the array
+func getNotes1(context *gin.Context) {
 	context.IndentedJSON(http.StatusOK, notes)
 }
 
@@ -32,6 +110,12 @@ func createNote(context *gin.Context) {
 
 	// If there is an error
 	if err := context.BindJSON(&newNote); err != nil {
+		return
+	}
+
+	// Check if file exists already
+	if _, err := ioutil.ReadFile("database/notes/" + newNote.ID + ".json"); err == nil {
+		fmt.Println("ERROR: File already exists")
 		return
 	}
 
@@ -46,7 +130,7 @@ func createNote(context *gin.Context) {
 
 	defer file.Close()
 
-	//write the json to the file
+	//write the json to the file. please make this better in the future.
 	file.WriteString(
 		`{"id": "` + newNote.ID + `",` + `"title": "` + newNote.Title + `",` + `"body": "` + newNote.Body + `"}`)
 
@@ -54,23 +138,32 @@ func createNote(context *gin.Context) {
 
 }
 
+// Add status return
 func deleteNoteById(context *gin.Context) {
 	id := context.Param("id")
 
-	for i, note := range notes {
-		if note.ID == id {
+	fileList, err := ioutil.ReadDir("database/notes/")
 
-			message := note
-			notes = append(notes[:i], notes[i+1])
-			context.IndentedJSON(http.StatusOK, message)
+	if err != nil {
+		fmt.Println("ERROR from delete request: " + err.Error())
+		return
+	}
+
+	for _, file := range fileList {
+		if file.Name() == id+".json" {
+			fmt.Println(`Deleted file "` + file.Name() + `"`)
+			os.Remove("database/notes/" + id + ".json")
 			return
 		}
 	}
+
+	fmt.Println(`File "` + id + `.json" does not exist in the database`)
 
 	context.IndentedJSON(http.StatusOK, "note not found")
 
 }
 
+// Add status return
 func putNote(context *gin.Context) {
 	// create note w payload
 	var newNote note
@@ -80,52 +173,28 @@ func putNote(context *gin.Context) {
 
 	id := newNote.ID
 
-	// if note with ID exists
-	for i := range notes {
-		if notes[i].ID == id {
-
-			notes[i] = newNote
-
-			return
-		}
-	}
-
-	// create new note if a note with the ID didn't exist
-	notes = append(notes, newNote)
-
-}
-
-func noteById(context *gin.Context) {
-	id := context.Param("id")
-	note, err := getNoteById(id)
-
-	if err != nil {
-		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Note not found."})
+	os.Remove(noteDatabase + id + ".json")
+	file, err2 := os.Create(noteDatabase + id + ".json")
+	if err2 != nil {
 		return
 	}
 
-	context.IndentedJSON(http.StatusOK, note)
+	file.WriteString(
+		`{"id": "` + newNote.ID + `",` + `"title": "` + newNote.Title + `",` + `"body": "` + newNote.Body + `"}`)
 
-}
-
-func getNoteById(id string) (*note, error) {
-	for i, note := range notes {
-		if note.ID == id {
-			return &notes[i], nil
-		}
-	}
-
-	return nil, errors.New("note not found")
 }
 
 func main() {
+	// Generate test files
+	generateTestJson()
+
 	// Initialize server
 	server := gin.Default()
 
 	server.GET("/nich-neuron/notes", getNotes)
 	server.POST("/nich-neuron/notes", createNote)
 	server.GET("/nich-neuron/notes/:id", noteById)
-	server.DELETE("/nich-neuron/delete/:id", deleteNoteById)
+	server.DELETE("/nich-neuron/notes/:id", deleteNoteById)
 	server.PUT("/nich-neuron/notes", putNote)
 
 	server.Run(":8080")
