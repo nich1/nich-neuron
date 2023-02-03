@@ -18,12 +18,7 @@ type note struct {
 	Body  string `json:"body"`
 }
 
-var notes = []note{
-	{ID: "1", Title: "Homework Plan", Body: "Do Linear Algebra on Saturday and everything else on Friday"},
-	{ID: "5", Title: "Sunday Reminder", Body: "Go to church during the day!"},
-	{ID: "3", Title: "Make daily checklist", Body: ""},
-}
-
+// When the server starts, these files are automatically created if they don't already exist. This is used for testing
 func generateTestJson() {
 	file1, err1 := os.Create(noteDatabase + "1.json")
 	file2, err2 := os.Create(noteDatabase + "3.json")
@@ -39,11 +34,13 @@ func generateTestJson() {
 
 }
 
+// Function called during a get + /id request. Returns json of specified id
 func noteById(context *gin.Context) {
 	id := context.Param("id")
 
 	fileList, err := ioutil.ReadDir("database/notes/")
 
+	// Send response back saying something went wrong
 	if err != nil {
 		return
 	}
@@ -54,6 +51,7 @@ func noteById(context *gin.Context) {
 			fileContent, _ := ioutil.ReadFile(noteDatabase + id + ".json")
 			var data interface{}
 			err2 := json.Unmarshal(fileContent, &data)
+			// Send response back saying something went wrong
 			if err2 != nil {
 				return
 			}
@@ -68,9 +66,11 @@ func noteById(context *gin.Context) {
 
 }
 
+// Called during basic get request. Returns json array of all json objects in the database
 func getNotes(context *gin.Context) {
 	fileList, err := ioutil.ReadDir("database/notes/")
 
+	// Send response back saying something went wrong
 	if err != nil {
 		return
 	}
@@ -84,45 +84,38 @@ func getNotes(context *gin.Context) {
 		err2 := json.Unmarshal(fileContent, &data)
 		fmt.Println(data)
 
+		// Send response back saying something went wrong
 		if err2 != nil {
 			return
 		}
 		arr = append(arr, data)
-		//context.IndentedJSON(http.StatusOK, data)
 
 	}
-
-	//json.Marshal(listOfObjects)
 
 	context.IndentedJSON(http.StatusOK, arr)
 
 }
 
-// Needs to be redone without the array
-func getNotes1(context *gin.Context) {
-	context.IndentedJSON(http.StatusOK, notes)
-}
-
+// Called during post request, creates new json file and fills it with payload
 func createNote(context *gin.Context) {
 	var newNote note
 
-	// MAKE IT SO ID'S ARE UNIQUE
-
 	// If there is an error
+	// Send response back saying something went wrong
 	if err := context.BindJSON(&newNote); err != nil {
 		return
 	}
 
 	// Check if file exists already
+	// do something with error
 	if _, err := ioutil.ReadFile("database/notes/" + newNote.ID + ".json"); err == nil {
 		fmt.Println("ERROR: File already exists")
 		return
 	}
 
-	notes = append(notes, newNote)
-
 	file, err := os.Create("database/notes/" + newNote.ID + ".json")
 
+	// Do something with this error bro come on
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -139,11 +132,13 @@ func createNote(context *gin.Context) {
 }
 
 // Add status return
+// Called by delete /id request. Deletes json file in database
 func deleteNoteById(context *gin.Context) {
 	id := context.Param("id")
 
 	fileList, err := ioutil.ReadDir("database/notes/")
 
+	// Good! You're not just mindlessly returning! Now add a response
 	if err != nil {
 		fmt.Println("ERROR from delete request: " + err.Error())
 		return
@@ -164,9 +159,12 @@ func deleteNoteById(context *gin.Context) {
 }
 
 // Add status return
+// Called by put request. Changes payload if file exists, otherwise creates file + injects payload
 func putNote(context *gin.Context) {
 	// create note w payload
 	var newNote note
+
+	// Utilize error bro
 	if err := context.BindJSON(&newNote); err != nil {
 		return
 	}
@@ -175,6 +173,8 @@ func putNote(context *gin.Context) {
 
 	os.Remove(noteDatabase + id + ".json")
 	file, err2 := os.Create(noteDatabase + id + ".json")
+
+	// Utilize error bro
 	if err2 != nil {
 		return
 	}
@@ -191,6 +191,7 @@ func main() {
 	// Initialize server
 	server := gin.Default()
 
+	// Routing
 	server.GET("/nich-neuron/notes", getNotes)
 	server.POST("/nich-neuron/notes", createNote)
 	server.GET("/nich-neuron/notes/:id", noteById)
