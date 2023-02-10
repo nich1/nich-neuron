@@ -42,6 +42,7 @@ func noteById(context *gin.Context) {
 
 	// Send response back saying something went wrong
 	if err != nil {
+		context.IndentedJSON(http.StatusConflict, "Note does not exist")
 		return
 	}
 
@@ -53,6 +54,7 @@ func noteById(context *gin.Context) {
 			err2 := json.Unmarshal(fileContent, &data)
 			// Send response back saying something went wrong
 			if err2 != nil {
+				context.IndentedJSON(http.StatusConflict, "Error in converting data")
 				return
 			}
 			fmt.Println(data)
@@ -72,6 +74,7 @@ func getNotes(context *gin.Context) {
 
 	// Send response back saying something went wrong
 	if err != nil {
+		context.IndentedJSON(http.StatusConflict, "Database directory error")
 		return
 	}
 
@@ -86,6 +89,7 @@ func getNotes(context *gin.Context) {
 
 		// Send response back saying something went wrong
 		if err2 != nil {
+			context.IndentedJSON(http.StatusConflict, "Error in converting data")
 			return
 		}
 		arr = append(arr, data)
@@ -100,23 +104,22 @@ func getNotes(context *gin.Context) {
 func createNote(context *gin.Context) {
 	var newNote note
 
-	// If there is an error
 	// Send response back saying something went wrong
 	if err := context.BindJSON(&newNote); err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error in converting data")
 		return
 	}
 
 	// Check if file exists already
-	// do something with error
 	if _, err := ioutil.ReadFile("database/notes/" + newNote.ID + ".json"); err == nil {
-		fmt.Println("ERROR: File already exists")
+		context.IndentedJSON(http.StatusConflict, "File already exists")
 		return
 	}
 
 	file, err := os.Create("database/notes/" + newNote.ID + ".json")
 
-	// Do something with this error bro come on
 	if err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured in creating database file")
 		fmt.Println(err.Error())
 		return
 	}
@@ -135,11 +138,9 @@ func createNote(context *gin.Context) {
 // Called by delete /id request. Deletes json file in database
 func deleteNoteById(context *gin.Context) {
 	id := context.Param("id")
-
 	fileList, err := ioutil.ReadDir("database/notes/")
-
-	// Good! You're not just mindlessly returning! Now add a response
 	if err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured in reading database directory")
 		fmt.Println("ERROR from delete request: " + err.Error())
 		return
 	}
@@ -153,9 +154,7 @@ func deleteNoteById(context *gin.Context) {
 	}
 
 	fmt.Println(`File "` + id + `.json" does not exist in the database`)
-
-	context.IndentedJSON(http.StatusOK, "note not found")
-
+	context.IndentedJSON(http.StatusConflict, "Note not found")
 }
 
 // Add status return
@@ -164,8 +163,8 @@ func putNote(context *gin.Context) {
 	// create note w payload
 	var newNote note
 
-	// Utilize error bro
 	if err := context.BindJSON(&newNote); err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
 		return
 	}
 
@@ -174,11 +173,12 @@ func putNote(context *gin.Context) {
 	os.Remove(noteDatabase + id + ".json")
 	file, err2 := os.Create(noteDatabase + id + ".json")
 
-	// Utilize error bro
 	if err2 != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured in creating database file")
 		return
 	}
 
+	// I believe this can be improved upon in the future
 	file.WriteString(
 		`{"id": "` + newNote.ID + `",` + `"title": "` + newNote.Title + `",` + `"body": "` + newNote.Body + `"}`)
 
