@@ -6,28 +6,29 @@ import (
 	"os"
 )
 
-func sendEmail() {
-	from := os.Getenv("MAIL")
-	password := os.Getenv("PASSWD")
+func main() {
+	sendEmail("Test Subject 2", "Functionality.")
+}
 
-	toList := []string{"example@gmail.com"}
+// getenv not working properly right now
+func sendEmail(subject string, body string) {
+	auth := smtp.PlainAuth(
+		"",
+		os.Getenv("NeuronEmail"),
+		os.Getenv("NeuronPassword"),
+		"smtp.gmail.com")
 
-	host := "smtp.gmail.com"
+	msg := "Subject: " + subject + "\n" + body
 
-	port := "587"
-
-	msg := "Test message"
-
-	body := []byte(msg)
-
-	auth := smtp.PlainAuth("", from, password, host)
-
-	err := smtp.SendMail(host+":"+port, auth, from, toList, body)
+	err := smtp.SendMail(
+		"smtp.gmail.com:587",
+		auth,
+		os.Getenv("NeuronEmail"),
+		[]string{os.Getenv("PERSONAL_EMAIL")},
+		[]byte(msg),
+	)
 
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
 	}
-
-	fmt.Println("Successfully sent mail to all user in toList")
 }
