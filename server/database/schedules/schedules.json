@@ -1,0 +1,26 @@
+{
+    "1" : {
+        "Title": "Weigh yourself",
+        "Hour": "8",
+        "Minute": "30",
+        "Sunday": true,
+        "Monday": true,
+        "Tuesday": true,
+        "Wednesday": true,
+        "Thursday": true,
+        "Friday": true,
+        "Saturday": true
+    },
+    "2" : {
+        "Title": "Go To Class",
+        "Hour": "9",
+        "Minute": "30",
+        "Sunday": false,
+        "Monday": true,
+        "Tuesday": true,
+        "Wednesday": true,
+        "Thursday": true,
+        "Friday": false,
+        "Saturday": false
+    }
+}
