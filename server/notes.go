@@ -38,7 +38,7 @@ func generateTestJson() {
 func noteById(context *gin.Context) {
 	id := context.Param("id")
 
-	fileList, err := ioutil.ReadDir("database/notes/")
+	fileList, err := ioutil.ReadDir(noteDatabase)
 
 	// Send response back saying something went wrong
 	if err != nil {
@@ -70,7 +70,7 @@ func noteById(context *gin.Context) {
 
 // Called during basic get request. Returns json array of all json objects in the database
 func getNotes(context *gin.Context) {
-	fileList, err := ioutil.ReadDir("database/notes/")
+	fileList, err := ioutil.ReadDir(noteDatabase)
 
 	// Send response back saying something went wrong
 	if err != nil {
@@ -111,12 +111,12 @@ func createNote(context *gin.Context) {
 	}
 
 	// Check if file exists already
-	if _, err := ioutil.ReadFile("database/notes/" + newNote.ID + ".json"); err == nil {
+	if _, err := ioutil.ReadFile(noteDatabase + newNote.ID + ".json"); err == nil {
 		context.IndentedJSON(http.StatusConflict, "File already exists")
 		return
 	}
 
-	file, err := os.Create("database/notes/" + newNote.ID + ".json")
+	file, err := os.Create(noteDatabase + newNote.ID + ".json")
 
 	if err != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured in creating database file")
@@ -138,7 +138,7 @@ func createNote(context *gin.Context) {
 // Called by delete /id request. Deletes json file in database
 func deleteNoteById(context *gin.Context) {
 	id := context.Param("id")
-	fileList, err := ioutil.ReadDir("database/notes/")
+	fileList, err := ioutil.ReadDir(noteDatabase)
 	if err != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured in reading database directory")
 		fmt.Println("ERROR from delete request: " + err.Error())
@@ -148,7 +148,7 @@ func deleteNoteById(context *gin.Context) {
 	for _, file := range fileList {
 		if file.Name() == id+".json" {
 			fmt.Println(`Deleted file "` + file.Name() + `"`)
-			os.Remove("database/notes/" + id + ".json")
+			os.Remove(noteDatabase + id + ".json")
 			return
 		}
 	}

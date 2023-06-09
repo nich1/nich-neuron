@@ -1,0 +1,26 @@
+[
+    {
+        "Title": "Birthday",
+        "Enabled": true,
+        "Annual": true,
+        "Year": 2003,
+        "Month": 2,
+        "Day": 3,
+        "Hour": -1,
+        "Minute": -1,
+        "DaysInAdvance": 14,
+        "MinutesInAdvance": 0
+    },
+    {
+        "Title": "Flight To NY",
+        "Enabled": true,
+        "Annual": false,
+        "Year": 2023,
+        "Month": 8,
+        "Day": 4,
+        "Hour": 10,
+        "Minute": 20,
+        "DaysInAdvance": 7,
+        "MinutesInAdvance": 0
+    }
+]
