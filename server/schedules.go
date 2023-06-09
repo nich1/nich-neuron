@@ -25,8 +25,6 @@ type Schedule struct {
 	Saturday  bool
 }
 
-// TODO TOMORROW
-/*
 func putSchedule(context *gin.Context) {
 	// Assumes that an array is passed in. The first object in the array (both are Schedule struct-able)
 	// is the object to be replaced, and the second is the new object data
@@ -46,19 +44,18 @@ func putSchedule(context *gin.Context) {
 		return
 	}
 
-	// Convert rawJson to Schedule struct
-	var convertedJson Schedule
+	// Convert rawJson to array of Schedule
+	var convertedJson [2]Schedule
 	if unmarshalErr2 := context.BindJSON(&convertedJson); unmarshalErr2 != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
 		fmt.Println(unmarshalErr2)
 		return
 	}
 
-	// Update convertedJson from schedulesArray
+	// Change matching object in schedulesArray to the new data
 	for i := 0; i < len(schedulesArray); i++ {
-		if convertedJson == schedulesArray[i] {
-			schedulesArray[i].Enabled =
-
+		if convertedJson[0] == schedulesArray[i] {
+			schedulesArray[i] = convertedJson[1]
 		}
 	}
 
@@ -74,7 +71,6 @@ func putSchedule(context *gin.Context) {
 		fmt.Println(writeErr)
 	}
 }
-*/
 
 func getSchedule(context *gin.Context) {
 	// Read in database file for schedules

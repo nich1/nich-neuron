@@ -24,8 +24,9 @@ func httpListener() {
 	server.GET("/nich-neuron/schedule", getSchedule)
 	server.POST("/nich-neuron/schedule", addSchedule)
 	server.DELETE("/nich-neuron/schedule", deleteSchedule)
-	//server.PUT("/nich-neuron/schedule", putSchedule)
+	server.PUT("/nich-neuron/schedule", putSchedule)
 
+	// Start server on port 8080
 	server.Run(":8080")
 }
 
