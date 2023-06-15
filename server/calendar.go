@@ -5,25 +5,31 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 
 	"github.com/gin-gonic/gin"
 )
 
-const calendarFile = "database/time/schedules/calendar.json"
+const calendarFile = "database/time/calendar/calendar.json"
 
 // TODO: Add chronological ordering the calendar file?
-
-type CalendarEvent struct {
-	Title            string
-	Enabled          bool
-	Annual           bool
-	Year             uint16
-	Month            uint8
-	Day              uint8  // 0 To Disregard (ie, to label a month as an event like Black History month for example)
-	Hour             int8   // Negative to disregard
-	Minute           int8   // 0 To Disregard
-	DaysInAdvance    uint16 // For reminders 	If days and minutes are 0, no reminder
-	MinutesInAdvance uint16 // For reminders
+type timeInstance struct {
+	annual bool //Labels an event as occuring annually
+	year   uint16
+	month  uint8
+	day    uint8 // Disregard if 0
+	hour   uint8 // 25 To Disregard, Auto Disregard if day = 0
+	minute uint8 // 0 To Disregard, Auto Disregard if hour = 25
+}
+type reminder struct {
+	title string
+	when  timeInstance
+}
+type calendarEvent struct {
+	title     string
+	enabled   bool
+	date      timeInstance
+	reminders []timeInstance
 }
 
 func getCalendar(context *gin.Context) {
@@ -34,8 +40,8 @@ func getCalendar(context *gin.Context) {
 		return
 	}
 
-	// Convert file into an array of CalendarEvent
-	var calendarArray []CalendarEvent
+	// Convert file into an array of calendarEvent
+	var calendarArray []calendarEvent
 	unmarshalErr1 := json.Unmarshal([]byte(fileContent), &calendarArray)
 	if unmarshalErr1 != nil {
 		fmt.Println(unmarshalErr1)
@@ -56,16 +62,16 @@ func addCalendar(context *gin.Context) {
 		return
 	}
 
-	// Convert file into an array of CalendarEvent
-	var calendarArray []CalendarEvent
+	// Convert file into an array of calendarEvent
+	var calendarArray []calendarEvent
 	unmarshalErr1 := json.Unmarshal([]byte(fileContent), &calendarArray)
 	if unmarshalErr1 != nil {
 		fmt.Println(unmarshalErr1)
 		return
 	}
 
-	// Convert rawJson to CalendarEvent struct
-	var convertedJson CalendarEvent
+	// Convert rawJson to calendarEvent struct
+	var convertedJson calendarEvent
 	if unmarshalErr2 := context.BindJSON(&convertedJson); unmarshalErr2 != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
 		fmt.Println(unmarshalErr2)
@@ -99,16 +105,16 @@ func deleteCalendar(context *gin.Context) {
 		return
 	}
 
-	// Convert file into an array of CalendarEvent
-	var calendarArray []CalendarEvent
+	// Convert file into an array of calendarEvent
+	var calendarArray []calendarEvent
 	unmarshalErr1 := json.Unmarshal([]byte(fileContent), &calendarArray)
 	if unmarshalErr1 != nil {
 		fmt.Println(unmarshalErr1)
 		return
 	}
 
-	// Convert rawJson to CalendarEvent struct
-	var convertedJson CalendarEvent
+	// Convert rawJson to calendarEvent struct
+	var convertedJson calendarEvent
 	if unmarshalErr2 := context.BindJSON(&convertedJson); unmarshalErr2 != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
 		fmt.Println(unmarshalErr2)
@@ -117,7 +123,7 @@ func deleteCalendar(context *gin.Context) {
 
 	// Delete convertedJson from calendarArray
 	for i := 0; i < len(calendarArray); i++ {
-		if convertedJson == calendarArray[i] {
+		if reflect.DeepEqual(convertedJson, calendarArray[i]) /*convertedJson == calendarArray[i]*/ {
 			calendarArray = append(calendarArray[:i], calendarArray[i+1:]...)
 		}
 	}
@@ -138,7 +144,7 @@ func deleteCalendar(context *gin.Context) {
 
 // TODO VERY IMPORTANT ADD REMINDERS HERE
 func putCalendar(context *gin.Context) {
-	// Assumes that an array is passed in. The first object in the array (both are CalendarEvent struct-able)
+	// Assumes that an array is passed in. The first object in the array (both are calendarEvent struct-able)
 	// is the object to be replaced, and the second is the new object data
 
 	// Read in database file for calendar
@@ -148,8 +154,8 @@ func putCalendar(context *gin.Context) {
 		return
 	}
 
-	// Convert file into an array of CalendarEvent
-	var calendarArray []CalendarEvent
+	// Convert file into an array of calendarEvent
+	var calendarArray []calendarEvent
 	unmarshalErr1 := json.Unmarshal([]byte(fileContent), &calendarArray)
 	if unmarshalErr1 != nil {
 		fmt.Println(unmarshalErr1)
@@ -157,7 +163,7 @@ func putCalendar(context *gin.Context) {
 	}
 
 	// Convert rawJson to array of Schedule
-	var convertedJson [2]CalendarEvent
+	var convertedJson [2]calendarEvent
 	if unmarshalErr2 := context.BindJSON(&convertedJson); unmarshalErr2 != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
 		fmt.Println(unmarshalErr2)
@@ -166,7 +172,7 @@ func putCalendar(context *gin.Context) {
 
 	// Change matching object in schedulesArray to the new data
 	for i := 0; i < len(calendarArray); i++ {
-		if convertedJson[0] == calendarArray[i] {
+		if reflect.DeepEqual(convertedJson[0], calendarArray[i]) /*convertedJson[0] == calendarArray[i]*/ {
 			calendarArray[i] = convertedJson[1]
 		}
 	}
