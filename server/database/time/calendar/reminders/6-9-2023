@@ -1,0 +1,13 @@
+[
+    {
+        "title": "Flight To NY",
+        "when": {
+            "annual": false,
+            "year": 2003,
+            "month": 8,
+            "day": 1,
+            "hour": 17,
+            "minute": 0
+        }
+    }
+]
