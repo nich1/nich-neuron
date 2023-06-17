@@ -16,6 +16,7 @@ const calendarFile = "database/time/calendar/calendar.json"
 
 // TODO: Add chronological ordering the calendar file?
 type timeInstance struct {
+	title  string
 	annual bool //Labels an event as occuring annually
 	year   uint16
 	month  uint8
@@ -23,10 +24,7 @@ type timeInstance struct {
 	hour   uint8 // 25 To Disregard, Auto Disregard if day = 0
 	minute uint8 // 0 To Disregard, Auto Disregard if hour = 25
 }
-type reminder struct {
-	title string
-	when  timeInstance
-}
+
 type calendarEvent struct {
 	title     string
 	enabled   bool
