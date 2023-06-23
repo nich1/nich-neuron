@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -153,27 +154,29 @@ func addCalendar(context *gin.Context) {
 	var eventQueue timeInstances
 
 	// Populate eventQueue
-	var time0 timeInstance
-	time0.Title = convertedJson.Title
-	time0.Annual = convertedJson.Date.Annual
-	time0.Year = convertedJson.Date.Year
-	time0.Month = convertedJson.Date.Month
-	time0.Day = convertedJson.Date.Day
-	time0.Hour = convertedJson.Date.Hour
-	time0.Minute = convertedJson.Date.Minute
-	eventQueue = append(eventQueue, time0)
-	// Populate reminders
-	for i := 0; i < len(convertedJson.Reminders); i++ {
-		var time1 timeInstance
-		time1.Title = convertedJson.Reminders[i].Title
-		time1.Annual = convertedJson.Reminders[i].Annual
-		time1.Year = convertedJson.Reminders[i].Year
-		time1.Month = convertedJson.Reminders[i].Month
-		time1.Day = convertedJson.Reminders[i].Day
-		time1.Hour = convertedJson.Reminders[i].Hour
-		time1.Minute = convertedJson.Reminders[i].Minute
-		eventQueue = append(eventQueue, time1)
+	if convertedJson.Enabled {
+		var time0 timeInstance
+		time0.Title = convertedJson.Title
+		time0.Annual = convertedJson.Date.Annual
+		time0.Year = convertedJson.Date.Year
+		time0.Month = convertedJson.Date.Month
+		time0.Day = convertedJson.Date.Day
+		time0.Hour = convertedJson.Date.Hour
+		time0.Minute = convertedJson.Date.Minute
+		eventQueue = append(eventQueue, time0)
+		// Populate reminders
+		for i := 0; i < len(convertedJson.Reminders); i++ {
+			var time1 timeInstance
+			time1.Title = convertedJson.Reminders[i].Title
+			time1.Annual = convertedJson.Reminders[i].Annual
+			time1.Year = convertedJson.Reminders[i].Year
+			time1.Month = convertedJson.Reminders[i].Month
+			time1.Day = convertedJson.Reminders[i].Day
+			time1.Hour = convertedJson.Reminders[i].Hour
+			time1.Minute = convertedJson.Reminders[i].Minute
+			eventQueue = append(eventQueue, time1)
 
+		}
 	}
 
 	for i := 0; i < len(eventQueue); i++ {
@@ -184,9 +187,17 @@ func addCalendar(context *gin.Context) {
 		if eventQueue[i].Annual == true {
 			eventYear = "annual"
 		} else {
+			// If year is in the past, ignore this schedule
+			if eventQueue[i].Year < time.Now().Year() {
+				continue
+			}
 			eventYear = strconv.FormatUint(uint64(eventQueue[i].Year), 10)
 		}
 
+		// If month is in the past, ignore this schedule
+		if eventQueue[i].Month < int(time.Now().Month()) {
+			continue
+		}
 		// Create year folder if does not exist
 		if _, dirErr1 := os.Stat("database/time/calendar/" + eventYear); dirErr1 != nil {
 			if os.IsNotExist(dirErr1) {
@@ -211,6 +222,10 @@ func addCalendar(context *gin.Context) {
 			}
 		}
 
+		// If day is in the past, ignore this schedule
+		if eventQueue[i].Day < int(time.Now().Day()) {
+			continue
+		}
 		// Create file named the day if does not exist
 		var filename string
 		filename = strconv.FormatUint(uint64(eventQueue[i].Day), 10) + ".json"
@@ -480,6 +495,218 @@ func putCalendar(context *gin.Context) {
 		newArray = append(newArray, convertedJson[1].Reminders[i])
 	}
 
+	oldEnabled := convertedJson[0].Enabled
+	newEnabled := convertedJson[1].Enabled
+	// If both are disabled, we don't need to do anything in terms of system scheduling
+	if oldEnabled == false && newEnabled == false {
+		return
+	}
+
+	// If old is disabled and new is enabled, we just need to add newArray
+	if oldEnabled == false && newEnabled == true {
+		for i := 0; i < len(newArray); i++ {
+			// Open / create proper directories and file
+			fmt.Println(newArray[i])
+			fmt.Println(i)
+			var eventYear string
+			if newArray[i].Annual == true {
+				eventYear = "annual"
+			} else {
+				// If year is in the past, ignore this schedule
+				if newArray[i].Year < time.Now().Year() {
+					continue
+				}
+				eventYear = strconv.FormatUint(uint64(newArray[i].Year), 10)
+			}
+
+			// If month is in the past, ignore this schedule
+			if newArray[i].Month < int(time.Now().Month()) {
+				continue
+			}
+			// If day is in the past, ignore this schedule
+			if newArray[i].Day < int(time.Now().Day()) {
+				continue
+			}
+			// Create year folder if does not exist
+			if _, dirErr1 := os.Stat("database/time/calendar/" + eventYear); dirErr1 != nil {
+				if os.IsNotExist(dirErr1) {
+					// Dir does not exist, create year dir
+					dirErr2 := os.Mkdir(("database/time/calendar/" + eventYear), 0755)
+					if dirErr2 != nil {
+						fmt.Println("Error in making directory")
+					}
+				}
+			}
+
+			// Create month folder if does not exist
+			var eventMonth string
+			eventMonth = strconv.FormatUint(uint64(newArray[i].Month), 10)
+			if _, dirErr3 := os.Stat("database/time/calendar/" + eventYear + "/" + eventMonth); dirErr3 != nil {
+				if os.IsNotExist(dirErr3) {
+					// Dir does not exist, create month dir
+					dirErr4 := os.Mkdir(("database/time/calendar/" + eventYear + "/" + eventMonth), 0755)
+					if dirErr4 != nil {
+						fmt.Println("Error in making directory")
+					}
+				}
+			}
+
+			// Create file named the day if does not exist
+			var filename string
+			filename = strconv.FormatUint(uint64(newArray[i].Day), 10) + ".json"
+			if _, fileErr1 := os.Stat("database/time/calendar/" + eventYear + "/" + eventMonth + "/" + filename); fileErr1 != nil {
+				if os.IsNotExist(fileErr1) {
+					// File does not exist, create file
+
+					var eventArray timeInstances
+					eventArray = append(eventArray, newArray[i])
+					// Convert array back to json
+					writeJson2, writeJsonErr := json.Marshal(eventArray)
+					if writeJsonErr != nil {
+						fmt.Println(writeJsonErr)
+					}
+
+					// Write to json file
+					writeErr := ioutil.WriteFile("database/time/calendar/"+eventYear+"/"+eventMonth+"/"+filename, writeJson2, 0644)
+					if writeErr != nil {
+						fmt.Println(writeErr)
+					}
+
+				}
+			} else {
+
+				// Read in targeted file for calendar
+				fileContent, fileErr := ioutil.ReadFile("database/time/calendar/" + eventYear + "/" + eventMonth + "/" + filename)
+				if fileErr != nil {
+					fmt.Println(fileErr)
+					return
+				}
+
+				// Convert file into an array of calendarEvent
+				var eventArray []timeInstance
+				unmarshalErr1 := json.Unmarshal(fileContent, &eventArray)
+				if unmarshalErr1 != nil {
+					fmt.Println(unmarshalErr1)
+					return
+				}
+
+				eventArray = append(eventArray, newArray[i])
+
+				// Convert array back to json
+				writeJson2, writeJsonErr := json.Marshal(eventArray)
+				if writeJsonErr != nil {
+					fmt.Println(writeJsonErr)
+				}
+
+				// Write eventArray to schedules.json file
+				writeErr := ioutil.WriteFile("database/time/calendar/"+eventYear+"/"+eventMonth+"/"+filename, writeJson2, 0644)
+				if writeErr != nil {
+					fmt.Println(writeErr)
+				}
+			}
+		}
+
+		return
+	}
+
+	// If old is enabled and new is disabled, we just need to delete oldArray
+	if oldEnabled == true && newEnabled == false {
+		for i := 0; i < len(oldArray); i++ {
+			var eventYear string
+			if oldArray[i].Annual == true {
+				eventYear = "annual"
+			} else {
+				eventYear = strconv.FormatUint(uint64(oldArray[i].Year), 10)
+			}
+			var filename string
+			filename = strconv.FormatUint(uint64(oldArray[i].Day), 10) + ".json"
+			// Read in targeted file for calendar
+			fileContent, fileErr := ioutil.ReadFile("database/time/calendar/" + eventYear + "/" + strconv.FormatUint(uint64(oldArray[i].Month), 10) + "/" + filename)
+			if fileErr != nil {
+				fmt.Println(fileErr)
+				return
+			}
+
+			// Convert file into an array of calendarEvent
+			var eventArray []timeInstance
+			unmarshalErr1 := json.Unmarshal([]byte(fileContent), &eventArray)
+			if unmarshalErr1 != nil {
+				fmt.Println(unmarshalErr1)
+				return
+			}
+
+			fmt.Println(eventArray)
+
+			for j := 0; j < len(eventArray); j++ {
+				if oldArray[i] == eventArray[j] {
+					eventArray = append(eventArray[:j], eventArray[j+1:]...)
+					break
+				}
+			}
+
+			// Convert array back to json
+			writeJson2, writeJsonErr := json.Marshal(eventArray)
+			if writeJsonErr != nil {
+				fmt.Println(writeJsonErr)
+			}
+
+			// Write eventArray to schedules.json file
+			writeErr := ioutil.WriteFile("database/time/calendar/"+eventYear+"/"+strconv.FormatUint(uint64(oldArray[i].Month), 10)+"/"+filename, writeJson2, 0644)
+			if writeErr != nil {
+				fmt.Println(writeErr)
+			}
+		}
+		return
+	}
+
+	// If both are enabled, we need to properly handle replacement / updating with more dynamic logic
+
+	// If there are more oldArray than newArray (deleted some reminders)
+	// Then delete the last entries of oldArray and then run 1-1 comparisons
+	if len(newArray) < len(oldArray) {
+		for i := len(newArray); i < len(oldArray); i++ {
+			// Delete i'th oldArray
+			var yearOld string
+			if newArray[i].Annual {
+				yearOld = "annual"
+			} else {
+				yearOld = strconv.FormatUint(uint64(oldArray[i].Year), 10)
+			}
+			oldFileName := "database/time/calendar/" + yearOld + "/" + strconv.FormatUint(uint64(oldArray[i].Month), 10) + "/" + strconv.FormatUint(uint64(oldArray[i].Day), 10) + ".json"
+
+			// Read in file
+			fileContent1, fileErr1 := ioutil.ReadFile(oldFileName)
+			if fileErr1 != nil {
+				fmt.Println(fileErr1)
+				return
+			}
+			// Convert file into an array of timeInstances
+			var arrayWithDel timeInstances
+			unmarshalErr3 := json.Unmarshal([]byte(fileContent1), &arrayWithDel)
+			if unmarshalErr3 != nil {
+				fmt.Println(unmarshalErr3)
+				return
+			}
+			// Delete match from arrayWithDel
+			for j := 0; j < len(arrayWithDel); j++ {
+				if oldArray[i] == arrayWithDel[j] {
+					arrayWithDel = append(arrayWithDel[:j], arrayWithDel[j+1:]...)
+				}
+			}
+			// Convert array back to json
+			writeJson, writeJsonErr := json.Marshal(arrayWithDel)
+			if writeJsonErr != nil {
+				fmt.Println(writeJsonErr)
+			}
+			// Write calendarArray to calendar.json file
+			writeErr := ioutil.WriteFile(oldFileName, writeJson, 0644)
+			if writeErr != nil {
+				fmt.Println(writeErr)
+			}
+
+		}
+	}
+
 	// For every old timeInstance, compare and update data to cooresponding new timeInstance
 	for i := 0; i < len(oldArray); i++ {
 		var yearOld string
@@ -492,8 +719,21 @@ func putCalendar(context *gin.Context) {
 		if newArray[i].Annual {
 			yearNew = "annual"
 		} else {
+			// If year is in the past, ignore this schedule
+			if newArray[i].Year < time.Now().Year() {
+				continue
+			}
 			yearNew = strconv.FormatUint(uint64(oldArray[i].Year), 10)
 		}
+		// If month is in the past, ignore this schedule
+		if newArray[i].Month < int(time.Now().Month()) {
+			continue
+		}
+		// If day is in the past, ignore this schedule
+		if newArray[i].Day < int(time.Now().Day()) {
+			continue
+		}
+
 		oldFileName := "database/time/calendar/" + yearOld + "/" + strconv.FormatUint(uint64(oldArray[i].Month), 10) + "/" + strconv.FormatUint(uint64(oldArray[i].Day), 10) + ".json"
 		newFileName := "database/time/calendar/" + yearNew + "/" + strconv.FormatUint(uint64(newArray[i].Month), 10) + "/" + strconv.FormatUint(uint64(newArray[i].Day), 10) + ".json"
 
@@ -625,6 +865,105 @@ func putCalendar(context *gin.Context) {
 				if writeErr2 != nil {
 					fmt.Println(writeErr2)
 				}
+			}
+		}
+	}
+
+	// Handles if there are more newArray then oldArray (created reminders)
+	for i := len(oldArray); i < len(newArray); i++ {
+		// At this point, there is nothing to delete, just need to add
+
+		var yearNew string
+		if newArray[i].Annual {
+			yearNew = "annual"
+		} else {
+			// If year is in the past, ignore this schedule
+			if newArray[i].Year < time.Now().Year() {
+				continue
+			}
+			yearNew = strconv.FormatUint(uint64(oldArray[i].Year), 10)
+		}
+		// If month is in the past, ignore this schedule
+		if newArray[i].Month < int(time.Now().Month()) {
+			continue
+		}
+		// If day is in the past, ignore this schedule
+		if newArray[i].Day < int(time.Now().Day()) {
+			continue
+		}
+
+		newFileName := "database/time/calendar/" + yearNew + "/" + strconv.FormatUint(uint64(newArray[i].Month), 10) + "/" + strconv.FormatUint(uint64(newArray[i].Day), 10) + ".json"
+
+		// Before we read the file, we need to check if directories
+		// exist (year and month), and if not, create them
+		if yearNew != "annual" {
+			yearNew = strconv.FormatUint(uint64(newArray[i].Year), 10)
+			// Create year folder if does not exist
+			if _, dirErr1 := os.Stat("database/time/calendar/" + yearNew); dirErr1 != nil {
+				if os.IsNotExist(dirErr1) {
+					// Dir does not exist, create year dir
+					dirErr2 := os.Mkdir(("database/time/calendar/" + yearNew), 0755)
+					if dirErr2 != nil {
+						fmt.Println("Error in making directory")
+					}
+				}
+			}
+		}
+		var month string = strconv.FormatUint(uint64(newArray[i].Month), 10)
+		// Create month folder if does not exist
+		if _, dirErr3 := os.Stat("database/time/calendar/" + yearNew + "/" + month); dirErr3 != nil {
+			if os.IsNotExist(dirErr3) {
+				// Dir does not exist, create month dir
+				dirErr4 := os.Mkdir(("database/time/calendar/" + yearNew + "/" + month), 0755)
+				if dirErr4 != nil {
+					fmt.Println("Error in making directory")
+				}
+			}
+		}
+		// File does not exist, create file
+		if _, fileErr1 := os.Stat(newFileName); fileErr1 != nil {
+			if os.IsNotExist(fileErr1) {
+				var eventArray timeInstances
+				eventArray = append(eventArray, newArray[i])
+				// Convert array back to json
+				writeJson2, writeJsonErr := json.Marshal(eventArray)
+				if writeJsonErr != nil {
+					fmt.Println(writeJsonErr)
+				}
+
+				// Write eventArray to schedules.json file
+				writeErr := ioutil.WriteFile(newFileName, writeJson2, 0644)
+				if writeErr != nil {
+					fmt.Println(writeErr)
+				}
+
+			}
+		} else { // File exists, can read
+
+			// Read in file
+			fileContent2, fileErr2 := ioutil.ReadFile(newFileName)
+			if fileErr2 != nil {
+				fmt.Println(fileErr2)
+				return
+			}
+			// Convert file into an array of timeInstances
+			var arrayToAdd timeInstances
+			unmarshalErr4 := json.Unmarshal(fileContent2, &arrayToAdd)
+			if unmarshalErr4 != nil {
+				fmt.Println(unmarshalErr4)
+				return
+			}
+			// Add new object to arrayToAdd
+			arrayToAdd = append(arrayToAdd, newArray[i])
+			// Convert array back to json
+			writeJson2, writeJsonErr2 := json.Marshal(arrayToAdd)
+			if writeJsonErr2 != nil {
+				fmt.Println(writeJsonErr2)
+			}
+			// Write calendarArray to calendar.json file
+			writeErr2 := ioutil.WriteFile(newFileName, writeJson2, 0644)
+			if writeErr2 != nil {
+				fmt.Println(writeErr2)
 			}
 		}
 	}

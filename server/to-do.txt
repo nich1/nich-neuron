@@ -1,1 +1,0 @@
-- Go back in post and put for if a schedule is irrelevant (date has already passed, check enabled / disabled, implement with a check in put)
