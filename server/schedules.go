@@ -14,8 +14,8 @@ const schedulesFile = "database/time/schedules/schedules.json"
 type Schedule struct {
 	Title     string
 	Enabled   bool
-	Hour      int64
-	Minute    int64
+	Hour      int8
+	Minute    int8
 	Sunday    bool
 	Monday    bool
 	Tuesday   bool

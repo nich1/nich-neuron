@@ -465,8 +465,6 @@ func putCalendar(context *gin.Context) {
 		fmt.Println(writeErr)
 	}
 
-	// EVERYTHING WORKS TIL HERE LOL
-
 	// Create two arrays for comparison
 	var oldArray timeInstances
 	var newArray timeInstances

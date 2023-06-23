@@ -1,0 +1,11 @@
+[
+    {
+        "title": "Test Event",
+        "annual": true,
+        "year": 2023,
+        "month": 6,
+        "day": 22,
+        "hour": 22,
+        "minute": 56
+    }
+]
