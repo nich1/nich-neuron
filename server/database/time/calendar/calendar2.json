@@ -1,0 +1,86 @@
+[
+    {
+        "title": "Birthday",
+        "enabled": true,
+        "date": {
+            "title": "Birthday",
+            "annual": true,
+            "year": 2003,
+            "month": 2,
+            "day": 3,
+            "hour": 25,
+            "minute": 0
+        },
+        "reminders": [
+            {
+                "title": "Birthday reminder",
+                "annual": true,
+                "year": 2003,
+                "month": 1,
+                "day": 3,
+                "hour": 8,
+                "minute": 0
+            },
+            {
+                "title": "Birthday reminder",
+                "annual": true,
+                "year": 2003,
+                "month": 1,
+                "day": 20,
+                "hour": 8,
+                "minute": 0
+            },
+            {
+                "title": "Birthday reminder",
+                "annual": true,
+                "year": 2003,
+                "month": 2,
+                "day": 1,
+                "hour": 8,
+                "minute": 0
+            }
+        ]
+    },
+    {
+        "title": "Flight To NY",
+        "enabled": true,
+        "date": {
+            "title": "Flight To NY",
+            "annual": false,
+            "year": 2023,
+            "month": 8,
+            "day": 4,
+            "hour": 10,
+            "minute": 20
+        },
+        "reminders": [
+            {
+                "title": "Flight To NY Reminder",
+                "annual": true,
+                "year": 2023,
+                "month": 8,
+                "day": 4,
+                "hour": 8,
+                "minute": 0
+            },
+            {
+                "title": "Flight To NY Reminder",
+                "annual": false,
+                "year": 2003,
+                "month": 8,
+                "day": 1,
+                "hour": 17,
+                "minute": 0
+            },
+            {
+                "title": "Flight To NY Reminder",
+                "annual": false,
+                "year": 2023,
+                "month": 7,
+                "day": 25,
+                "hour": 8,
+                "minute": 0
+            }
+        ]
+    }
+]

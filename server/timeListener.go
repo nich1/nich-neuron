@@ -28,15 +28,15 @@ func checkEvent(filename string) {
 		return
 	}
 	for event := 0; event < len(todaysArray); event++ {
-		if todaysArray[event].hour == uint8(dt.Hour()) && todaysArray[event].minute == uint8(dt.Minute()) {
-			sendEmail(todaysArray[event].title, "Calendar event \""+todaysArray[event].title+"\"")
+		if uint8(todaysArray[event].Hour) == uint8(dt.Hour()) && uint8(todaysArray[event].Minute) == uint8(dt.Minute()) {
+			sendEmail(todaysArray[event].Title, "Calendar event \""+todaysArray[event].Title+"\"")
 		}
 	}
 }
 
 func timeListener() {
 	for true {
-		fmt.Println("Listener going off")
+		//fmt.Println("Listener going off")
 		dt := time.Now()
 		calendarReadFile := "database/time/calendar/" + strconv.FormatInt(int64(dt.Year()), 10) + "/" + strconv.FormatInt(int64(dt.Month()), 10) + "/" + strconv.FormatInt(int64(dt.Day()), 10) + ".json"
 		annualReadFile := "database/time/calendar/" + "annual/" + strconv.FormatInt(int64(dt.Month()), 10) + "/" + strconv.FormatInt(int64(dt.Day()), 10) + ".json"
