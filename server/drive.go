@@ -92,9 +92,41 @@ func postDrive(context *gin.Context) {
 	context.String(http.StatusOK, fmt.Sprintf("'%s' uploaded!", file.Filename))
 }
 
+func mkdirDrive(context *gin.Context) {
+
+	// Convert rawJson to calendarEvent struct
+	var createPath string
+	if err := context.BindJSON(&createPath); err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
+		fmt.Println(err)
+		return
+	}
+	if strings.Contains(createPath, ".") {
+		fmt.Println("Unsafe path")
+		return
+	}
+
+	// Make Any New Necessary Directories
+	dirs := strings.Split(createPath, "/")
+	fullpath := driveLocation
+	for i := 0; i < len(dirs); i++ {
+		fullpath = fullpath + dirs[i] + "/"
+		// Check if valid path
+		if _, err := os.Stat(fullpath); err != nil {
+			if os.IsNotExist(err) {
+				// Dir does not exist, create dir
+				err := os.Mkdir((fullpath), 0755)
+				if err != nil {
+					fmt.Println("Error in making directory")
+				}
+			}
+		}
+	}
+}
+
 func deleteDrive(context *gin.Context) {
 	// Pass in string which is the path to what is to delete
-	// Convert rawJson to calendarEvent struct
+	// Convert rawJson to string
 	var deletePath string
 	if err := context.BindJSON(&deletePath); err != nil {
 		context.IndentedJSON(http.StatusConflict, "Error occured during file conversion")
@@ -113,4 +145,19 @@ func deleteDrive(context *gin.Context) {
 		fmt.Println(err)
 	}
 
+}
+
+func downloadDrive(context *gin.Context) {
+	var path string
+	if err := context.BindJSON(&path); err != nil {
+		context.IndentedJSON(http.StatusConflict, "Error occured during JSON conversion")
+	}
+	if strings.Contains(path, "..") {
+		fmt.Println("Unsafe file path")
+	}
+	fmt.Println(path)
+	dirs := strings.Split(path, "/")
+	fileName := dirs[len(dirs)-1]
+
+	context.FileAttachment(driveLocation+path, fileName)
 }

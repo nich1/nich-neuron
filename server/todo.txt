@@ -1,5 +1,5 @@
 X Upload files and what directory to put them in
 X Get list of file names
 X Delete files and directories
-- Create directories
-- Download files
+X Create directories
+X Download files
