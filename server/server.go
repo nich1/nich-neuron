@@ -28,6 +28,12 @@ func httpListener() {
 	server.DELETE("/nich-neuron/calendar", deleteCalendar)
 	server.PUT("/nich-neuron/calendar", putCalendar)
 
+	// Routing For Drive
+	server.MaxMultipartMemory = 8 << 20 // Max file upload is 8 MiB
+	server.POST("/nich-neuron/drive", postDrive)
+	server.GET("/nich-neuron/drive", getDrive)
+	server.DELETE("/nich-neuron/drive", deleteDrive)
+
 	// Start server on port 8080
 	server.Run(":8080")
 }

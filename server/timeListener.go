@@ -54,7 +54,6 @@ func cleanCalendarHistory() {
 
 func checkCalendar(filename string) {
 	dt := time.Now()
-	fmt.Println("Reading " + filename)
 
 	// Read in database file for calendar
 	fileContent, fileErr := ioutil.ReadFile(filename)
@@ -92,7 +91,6 @@ func checkCalendar(filename string) {
 
 func checkSchedule(filename string) {
 	dt := time.Now()
-	fmt.Println("Reading " + filename)
 
 	// Read in database file for calendar
 	fileContent, fileErr := ioutil.ReadFile(filename)
@@ -166,8 +164,6 @@ func timeListener() {
 
 		calendarReadFile := "database/time/calendar/" + year + "/" + month + "/" + day + ".json"
 		annualReadFile := "database/time/calendar/annual/" + month + "/" + day + ".json"
-		fmt.Println(annualReadFile)
-		fmt.Println(calendarReadFile)
 
 		// Check if we can clean up files or directories
 		cleanCalendarHistory()

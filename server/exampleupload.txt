@@ -1,0 +1,1 @@
+curl -X POST http://localhost:8080/nich-neuron/drive -F "file=@/Users/nicht/Downloads/test.jpg" -H "Content-Type: multipart/form-data" -H "location: Test1/"

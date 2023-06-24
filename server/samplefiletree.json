@@ -1,0 +1,29 @@
+{
+    "name": "drive",
+    "files": [
+        "test.txt",
+        "test1.txt"
+    ],
+    "folders": [
+        {
+            "name": "Folder1",
+            "files": [
+                "file1.txt",
+                "file2.txt"
+            ],
+            "folders": [
+                {}
+            ]
+        },
+        {
+            "name": "Folder2",
+            "files": [
+                "file3.txt",
+                "file4.txt"
+            ],
+            "folders": [
+                {}
+            ]
+        }
+    ]
+}
