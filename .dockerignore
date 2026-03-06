@@ -6,3 +6,7 @@ __pycache__
 venv
 *.md
 .dockerignore
+*.pyc
+__pycache__
+.venv
+venv
