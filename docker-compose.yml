@@ -18,6 +18,32 @@ services:
     #           count: all
     #           capabilities: [gpu]
 
+  # One-shot: waits for Ollama, pulls models from models.txt, then exits. Models persist in ollama_data.
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: ollama-init
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: "no"
+    volumes:
+      - ./models.txt:/models.txt:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for Ollama..."
+        until curl -sf http://ollama:11434/api/tags >/dev/null; do sleep 2; done;
+        echo "Pulling models from models.txt..."
+        while IFS= read -r model || [ -n "$$model" ]; do
+          model="$${model%%#*}"  # strip inline comments
+          [ -z "$$model" ] && continue
+          echo "Pulling $$model..."
+          curl -s -X POST http://ollama:11434/api/pull -H "Content-Type: application/json" -d "{\"model\":\"$$model\",\"stream\":false}"
+        done < /models.txt
+        echo "Models ready."
+    networks:
+      - neuron-network
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
@@ -32,7 +58,10 @@ services:
       - open_webui_data:/app/backend/data
       - ./open-webui-static:/app/backend/static
     depends_on:
-      - ollama
+      ollama:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
     networks:
       - neuron-network
 
@@ -74,13 +103,32 @@ services:
       - OLLAMA_URL=http://ollama:11434
       - OPEN_WEBUI_URL=http://open-webui:8080
       - N8N_URL=http://n8n:5678
+      - QDRANT_URL=http://qdrant:6333
       - API_TOKEN=${API_TOKEN}
     volumes:
       - .:/app
     depends_on:
-      - ollama
-      - n8n
-      - open-webui
+      ollama:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
+      n8n:
+        condition: service_started
+      open-webui:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    networks:
+      - neuron-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
     networks:
       - neuron-network
 
@@ -88,6 +136,7 @@ volumes:
   ollama_data:
   open_webui_data:
   n8n_data:
+  qdrant_data:
 
 networks:
   neuron-network:
