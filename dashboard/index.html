@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neuron Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: { 1: '#111118', 2: '#1a1a24', 3: '#232330' },
+            accent: '#6c63ff',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+    .fade-in { animation: fadeIn .3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="bg-surface-1 text-gray-200 min-h-screen">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-white font-bold text-sm">N</div>
+      <h1 class="text-lg font-semibold text-white">Neuron Dashboard</h1>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-gray-500">
+      <span id="lastRefresh">--</span>
+      <button onclick="refreshAll()" class="ml-2 px-3 py-1.5 bg-surface-3 hover:bg-gray-700 rounded-md transition-colors text-gray-300">Refresh</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+    <!-- Quick Links -->
+    <section>
+      <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">Quick Links</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3" id="quickLinks"></div>
+    </section>
+
+    <!-- Service Health -->
+    <section>
+      <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">Services</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3" id="serviceGrid"></div>
+    </section>
+
+    <!-- Agents + HITL side by side -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Agents -->
+      <section>
+        <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider mb-3">Agents</h2>
+        <div class="bg-surface-2 rounded-xl border border-gray-800 overflow-hidden">
+          <div id="agentList" class="divide-y divide-gray-800"></div>
+          <div id="agentEmpty" class="p-6 text-center text-gray-500 text-sm hidden">No agents registered</div>
+        </div>
+      </section>
+
+      <!-- HITL Flags -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-medium text-gray-400 uppercase tracking-wider">HITL Flags</h2>
+          <div class="flex gap-1">
+            <button onclick="filterFlags('pending')" class="flag-filter px-2 py-1 text-xs rounded bg-surface-3 text-gray-400 hover:text-white transition-colors" data-status="pending">Pending</button>
+            <button onclick="filterFlags('all')" class="flag-filter px-2 py-1 text-xs rounded bg-surface-3 text-gray-400 hover:text-white transition-colors" data-status="all">All</button>
+          </div>
+        </div>
+        <div class="bg-surface-2 rounded-xl border border-gray-800 overflow-hidden">
+          <div id="flagList" class="divide-y divide-gray-800"></div>
+          <div id="flagEmpty" class="p-6 text-center text-gray-500 text-sm hidden">No flags</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- HITL Resolve Modal -->
+    <div id="resolveModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50">
+      <div class="bg-surface-2 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4 fade-in">
+        <h3 class="text-white font-semibold mb-1" id="modalTitle">Resolve Flag</h3>
+        <p class="text-sm text-gray-400 mb-4" id="modalSummary"></p>
+        <div class="mb-4">
+          <label class="text-xs text-gray-400 block mb-1">Context</label>
+          <pre id="modalContext" class="bg-surface-1 rounded-lg p-3 text-xs text-gray-300 overflow-auto max-h-40"></pre>
+        </div>
+        <div class="mb-4">
+          <label class="text-xs text-gray-400 block mb-1">Proposed Action</label>
+          <p id="modalAction" class="text-sm text-gray-300"></p>
+        </div>
+        <div class="mb-4">
+          <label class="text-xs text-gray-400 block mb-1">Response (optional)</label>
+          <textarea id="modalResponse" class="w-full bg-surface-1 border border-gray-700 rounded-lg p-2 text-sm text-gray-200 focus:outline-none focus:border-accent" rows="2" placeholder="Add a note..."></textarea>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="resolveFlag('approved')" class="flex-1 py-2 bg-green-600/20 text-green-400 hover:bg-green-600/30 rounded-lg text-sm font-medium transition-colors">Approve</button>
+          <button onclick="resolveFlag('rejected')" class="flex-1 py-2 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg text-sm font-medium transition-colors">Reject</button>
+          <button onclick="resolveFlag('modified')" class="flex-1 py-2 bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600/30 rounded-lg text-sm font-medium transition-colors">Modify</button>
+          <button onclick="closeModal()" class="px-4 py-2 bg-surface-3 text-gray-400 hover:text-white rounded-lg text-sm transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+<script>
+const API = '/api/agent-platform';
+const AUTH = '/api/auth';
+
+const SERVICES = [
+  { name: 'Ollama',         url: '/api/agent-platform/health', key: 'ollama',  check: d => d.status === 'ok' },
+  { name: 'Agent Platform',  url: '/api/agent-platform/health', key: null,      check: d => d.status === 'ok' },
+  { name: 'Auth Server',     url: '/api/auth/health',           key: null,      check: d => d.status === 'ok' },
+  { name: 'Qdrant',          url: '/api/agent-platform/health', key: 'qdrant',  check: d => d.status === 'ok' },
+  { name: 'Ntfy',             url: '/api/ntfy/v1/health',        key: null,      check: d => d.healthy === true },
+];
+
+const LINKS = [
+  { name: 'Open WebUI',  href: 'http://localhost:3000',      color: 'bg-blue-600/20 text-blue-400' },
+  { name: 'n8n',          href: 'http://localhost:5678',      color: 'bg-orange-600/20 text-orange-400' },
+  { name: 'Seq Logs',     href: 'http://localhost:5380',      color: 'bg-purple-600/20 text-purple-400' },
+  { name: 'Qdrant',       href: 'http://localhost:6333/dashboard', color: 'bg-teal-600/20 text-teal-400' },
+  { name: 'Agent API',    href: 'http://localhost:8000/docs', color: 'bg-green-600/20 text-green-400' },
+  { name: 'Auth API',     href: 'http://localhost:8081/health', color: 'bg-pink-600/20 text-pink-400' },
+  { name: 'Ntfy',          href: 'http://localhost:8090',      color: 'bg-amber-600/20 text-amber-400' },
+  { name: 'Ollama',       href: 'http://localhost:11434',     color: 'bg-gray-600/20 text-gray-400' },
+];
+
+let currentFlagId = null;
+let currentFlagFilter = 'pending';
+
+// --- Quick Links ---
+function renderLinks() {
+  const el = document.getElementById('quickLinks');
+  el.innerHTML = LINKS.map(l => `
+    <a href="${l.href}" target="_blank" rel="noopener"
+       class="${l.color} rounded-lg px-3 py-2.5 text-center text-sm font-medium hover:brightness-125 transition-all">
+      ${l.name}
+    </a>
+  `).join('');
+}
+
+// --- Service Health ---
+async function fetchHealth() {
+  const grid = document.getElementById('serviceGrid');
+  const results = await Promise.allSettled(SERVICES.map(async s => {
+    try {
+      const r = await fetch(s.url, { signal: AbortSignal.timeout(5000) });
+      const d = await r.json();
+      return { ...s, up: s.check(d), data: d };
+    } catch {
+      return { ...s, up: false, data: null };
+    }
+  }));
+
+  grid.innerHTML = results.map(r => {
+    const s = r.value;
+    const dot = s.up
+      ? '<span class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span>'
+      : '<span class="w-2 h-2 rounded-full bg-red-400"></span>';
+    const status = s.up ? 'Online' : 'Offline';
+    const statusColor = s.up ? 'text-green-400' : 'text-red-400';
+    let extra = '';
+    if (s.up && s.data) {
+      if (s.data.agents_registered !== undefined) extra = `${s.data.agents_registered} agents`;
+      if (s.data.hitl_pending > 0) extra += `${extra ? ' · ' : ''}${s.data.hitl_pending} flags pending`;
+    }
+    return `
+      <div class="bg-surface-2 rounded-xl border border-gray-800 p-4 fade-in">
+        <div class="flex items-center gap-2 mb-1">
+          ${dot}
+          <span class="text-white font-medium text-sm">${s.name}</span>
+        </div>
+        <span class="text-xs ${statusColor}">${status}</span>
+        ${extra ? `<p class="text-xs text-gray-500 mt-1">${extra}</p>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// --- Agents ---
+async function fetchAgents() {
+  const list = document.getElementById('agentList');
+  const empty = document.getElementById('agentEmpty');
+  try {
+    const r = await fetch(`${API}/agents`, { signal: AbortSignal.timeout(5000) });
+    const agents = await r.json();
+    if (!agents.length) {
+      list.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    list.innerHTML = agents.map(a => {
+      const active = a.is_active;
+      const dot = active
+        ? '<span class="w-2 h-2 rounded-full bg-green-400"></span>'
+        : '<span class="w-2 h-2 rounded-full bg-gray-600"></span>';
+      const badge = active
+        ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-green-600/20 text-green-400">active</span>'
+        : '<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-600/20 text-gray-500">inactive</span>';
+      return `
+        <div class="px-4 py-3 flex items-center justify-between fade-in">
+          <div class="flex items-center gap-2">
+            ${dot}
+            <div>
+              <span class="text-sm text-white font-medium">${a.name}</span>
+              <p class="text-xs text-gray-500">${a.description}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            ${badge}
+            <span class="text-[10px] text-gray-600">${a.model}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    list.innerHTML = '';
+    empty.textContent = 'Agent platform unreachable';
+    empty.classList.remove('hidden');
+  }
+}
+
+// --- HITL Flags ---
+async function fetchFlags() {
+  const list = document.getElementById('flagList');
+  const empty = document.getElementById('flagEmpty');
+  try {
+    const param = currentFlagFilter === 'all' ? '' : `?status=${currentFlagFilter}`;
+    const r = await fetch(`${API}/hitl/flags${param}`, { signal: AbortSignal.timeout(5000) });
+    const flags = await r.json();
+    if (!flags.length) {
+      list.innerHTML = '';
+      empty.textContent = currentFlagFilter === 'pending' ? 'No pending flags' : 'No flags';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    const severityColors = {
+      info: 'bg-blue-600/20 text-blue-400',
+      review: 'bg-yellow-600/20 text-yellow-400',
+      blocking: 'bg-red-600/20 text-red-400',
+    };
+    const statusColors = {
+      pending: 'text-yellow-400',
+      approved: 'text-green-400',
+      rejected: 'text-red-400',
+      modified: 'text-blue-400',
+    };
+
+    list.innerHTML = flags.map(f => {
+      const sevClass = severityColors[f.severity] || severityColors.review;
+      const statClass = statusColors[f.status] || 'text-gray-400';
+      const clickable = f.status === 'pending' ? `cursor-pointer hover:bg-surface-3` : '';
+      const onclick = f.status === 'pending' ? `onclick="openModal('${f.id}')"` : '';
+      const ctx = typeof f.context === 'string' ? f.context : JSON.stringify(f.context);
+      return `
+        <div class="px-4 py-3 transition-colors ${clickable} fade-in" ${onclick}
+             data-flag='${JSON.stringify(f).replace(/'/g, "&#39;")}'>
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-white font-medium">${f.agent_name}</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded ${sevClass}">${f.severity}</span>
+            </div>
+            <span class="text-[10px] ${statClass}">${f.status}</span>
+          </div>
+          <p class="text-xs text-gray-400">${f.summary}</p>
+          <p class="text-[10px] text-gray-600 mt-1">${f.category} · ${timeAgo(f.created_at)}</p>
+        </div>
+      `;
+    }).join('');
+  } catch {
+    list.innerHTML = '';
+    empty.textContent = 'Agent platform unreachable';
+    empty.classList.remove('hidden');
+  }
+}
+
+function filterFlags(status) {
+  currentFlagFilter = status;
+  document.querySelectorAll('.flag-filter').forEach(b => {
+    b.classList.toggle('text-white', b.dataset.status === status);
+    b.classList.toggle('bg-accent/20', b.dataset.status === status);
+  });
+  fetchFlags();
+}
+
+// --- Modal ---
+function openModal(flagId) {
+  const el = document.querySelector(`[data-flag*='"id":"${flagId}"']`);
+  if (!el) return;
+  const flag = JSON.parse(el.dataset.flag);
+  currentFlagId = flagId;
+  document.getElementById('modalTitle').textContent = `${flag.agent_name} — ${flag.category}`;
+  document.getElementById('modalSummary').textContent = flag.summary;
+  const ctx = typeof flag.context === 'string' ? flag.context : JSON.stringify(flag.context, null, 2);
+  document.getElementById('modalContext').textContent = ctx;
+  document.getElementById('modalAction').textContent = flag.proposed_action;
+  document.getElementById('modalResponse').value = '';
+  const modal = document.getElementById('resolveModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeModal() {
+  const modal = document.getElementById('resolveModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  currentFlagId = null;
+}
+
+async function resolveFlag(status) {
+  if (!currentFlagId) return;
+  const response = document.getElementById('modalResponse').value || null;
+  try {
+    await fetch(`${API}/hitl/flags/${currentFlagId}/resolve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, response }),
+    });
+  } catch { /* best effort */ }
+  closeModal();
+  fetchFlags();
+  fetchHealth();
+}
+
+// --- Utilities ---
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function updateTimestamp() {
+  document.getElementById('lastRefresh').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+// --- Init ---
+async function refreshAll() {
+  updateTimestamp();
+  await Promise.all([fetchHealth(), fetchAgents(), fetchFlags()]);
+}
+
+renderLinks();
+refreshAll();
+setInterval(refreshAll, 30000);
+</script>
+</body>
+</html>

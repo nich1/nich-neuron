@@ -1,0 +1,27 @@
+resolver 127.0.0.11 valid=30s ipv6=off;
+
+server {
+    listen 9000;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/agent-platform/ {
+        set $agent_platform http://agent-platform:8000;
+        proxy_pass $agent_platform/;
+        proxy_set_header Authorization "Bearer ${INTERNAL_API_KEY}";
+    }
+
+    location /api/auth/ {
+        set $auth_server http://auth-server:8081;
+        proxy_pass $auth_server/;
+    }
+
+    location /api/ntfy/ {
+        set $ntfy_server http://ntfy:80;
+        proxy_pass $ntfy_server/;
+    }
+}

@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
     volumes:
       - ollama_data:/root/.ollama
     networks:
@@ -35,7 +37,8 @@ services:
         until curl -sf http://ollama:11434/api/tags >/dev/null; do sleep 2; done;
         echo "Pulling models from models.txt..."
         while IFS= read -r model || [ -n "$$model" ]; do
-          model="$${model%%#*}"  # strip inline comments
+          model=$$(echo "$$model" | tr -d '\r')
+          model="$${model%%#*}"
           [ -z "$$model" ] && continue
           echo "Pulling $$model..."
           curl -s -X POST http://ollama:11434/api/pull -H "Content-Type: application/json" -d "{\"model\":\"$$model\",\"stream\":false}"
@@ -56,7 +59,7 @@ services:
       - STATIC_DIR=/app/backend/static
     volumes:
       - open_webui_data:/app/backend/data
-      - ./open-webui-static:/app/backend/static
+      - ./open-webui-static:/app/backend/static:ro
     depends_on:
       ollama:
         condition: service_started
@@ -91,9 +94,7 @@ services:
       - neuron-network
 
   agent-platform:
-    build:
-      context: .
-      dockerfile: dockerfile
+    image: niches1/neuron-orion:latest
     container_name: agent-platform
     restart: unless-stopped
     ports:
@@ -104,9 +105,14 @@ services:
       - OPEN_WEBUI_URL=http://open-webui:8080
       - N8N_URL=http://n8n:5678
       - QDRANT_URL=http://qdrant:6333
+      - AUTH_URL=http://auth-server:8081
+      - SEQ_URL=http://seq:5341
+      - SEQ_API_KEY=${SEQ_API_KEY:-}
+      - NTFY_URL=http://ntfy:80
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
       - API_TOKEN=${API_TOKEN}
     volumes:
-      - .:/app
+      - agent_data:/app/data
     depends_on:
       ollama:
         condition: service_started
@@ -117,6 +123,30 @@ services:
       open-webui:
         condition: service_started
       qdrant:
+        condition: service_started
+      seq:
+        condition: service_started
+      auth-server:
+        condition: service_started
+    networks:
+      - neuron-network
+
+  auth-server:
+    image: niches1/neuron-cerberus:latest
+    container_name: auth-server
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_PATH=/data/auth.db
+      - SEQ_URL=http://seq:5341
+      - SEQ_API_KEY=${SEQ_API_KEY:-}
+    volumes:
+      - auth_data:/data
+    depends_on:
+      seq:
         condition: service_started
     networks:
       - neuron-network
@@ -132,11 +162,58 @@ services:
     networks:
       - neuron-network
 
+  seq:
+    image: datalust/seq:latest
+    container_name: seq
+    restart: unless-stopped
+    ports:
+      - "5380:80"
+      - "5341:5341"
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD:-admin}
+    volumes:
+      - seq_data:/data
+    networks:
+      - neuron-network
+
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: ntfy
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ntfy_data:/var/lib/ntfy
+    command: serve
+    networks:
+      - neuron-network
+
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+    depends_on:
+      agent-platform:
+        condition: service_started
+      auth-server:
+        condition: service_started
+    networks:
+      - neuron-network
+
 volumes:
   ollama_data:
   open_webui_data:
   n8n_data:
   qdrant_data:
+  seq_data:
+  agent_data:
+  auth_data:
+  ntfy_data:
 
 networks:
   neuron-network:

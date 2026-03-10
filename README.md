@@ -2,26 +2,28 @@
 
 Home server / lab setup.
 
-Monorepo that includes the code for a custom agent platform as well as a docker file for
-wiring everything up. Comes with n8n, Open WebUI, Agent Platform API (in development), and Ollama.
-Agent Framework Repo:
+## Services
 
-## Quick start
+| Service        | Port  | Image                                                       |
+| -------------- | ----- | ----------------------------------------------------------- |
+| Ollama         | 11434 | ollama/ollama                                               |
+| Open WebUI     | 3000  | ghcr.io/open-webui/open-webui                               |
+| n8n            | 5678  | n8nio/n8n                                                   |
+| Agent Platform | 8000  | [neuron-orion](https://github.com/nich1/neuron-orion)       |
+| Auth Server    | 8081  | [neuron-cerberus](https://github.com/nich1/neuron-cerberus) |
+| Qdrant         | 6333  | qdrant/qdrant                                               |
+| Seq            | 5380  | datalust/seq                                                |
+| Ntfy           | 8090  | binwiederhier/ntfy                                          |
+| Dashboard      | 9000  | local build (nginx)                                         |
+
+## Quick Start
 
 1. Copy env and set secrets:
    ```bash
    cp sample.env .env
-   # Edit .env: set N8N_PASSWORD, WEBUI_SECRET_KEY, optional API_TOKEN
    ```
 2. Start everything:
    ```bash
    docker compose up -d
    ```
-3. Open:
-   - **Open WebUI (chat):** http://localhost:3000
-   - **n8n:** http://localhost:5678
-   - **Agent platform API:** http://localhost:8000 (docs at `/docs`)
-   - **Ollama:** http://localhost:11434
-   - **Qdrant (vector DB):** http://localhost:6333 (for RAG/semantic search when you add it)
-
-4. Models: `ollama-init` pulls models listed in `models.txt` on first startup. Edit that file to add or remove models (one per line, `#` for comments).
+3. Edit `models.txt` to add or remove Ollama models (pulled automatically on first startup).
