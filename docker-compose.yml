@@ -11,7 +11,14 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - neuron-network
-    # If you have an NVIDIA GPU, uncomment below:
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # If you have an NVIDIA GPU, run setup.sh to auto-detect, or create
+    # docker-compose.override.yml with the deploy section below:
     # deploy:
     #   resources:
     #     reservations:
@@ -26,7 +33,7 @@ services:
     container_name: ollama-init
     depends_on:
       ollama:
-        condition: service_started
+        condition: service_healthy
     restart: "no"
     volumes:
       - ./models.txt:/models.txt:ro
@@ -62,11 +69,17 @@ services:
       - ./open-webui-static:/app/backend/static:ro
     depends_on:
       ollama:
-        condition: service_started
+        condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   n8n:
     image: n8nio/n8n:latest
@@ -89,9 +102,16 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   agent-platform:
     image: niches1/neuron-orion:latest
@@ -115,21 +135,27 @@ services:
       - agent_data:/app/data
     depends_on:
       ollama:
-        condition: service_started
+        condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
       n8n:
-        condition: service_started
+        condition: service_healthy
       open-webui:
-        condition: service_started
+        condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
       seq:
-        condition: service_started
+        condition: service_healthy
       auth-server:
-        condition: service_started
+        condition: service_healthy
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:${PORT:-8000}/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   auth-server:
     image: niches1/neuron-cerberus:latest
@@ -147,9 +173,15 @@ services:
       - auth_data:/data
     depends_on:
       seq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:8081/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -161,6 +193,12 @@ services:
       - qdrant_data:/qdrant/storage
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:6333/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   seq:
     image: datalust/seq:latest
@@ -176,6 +214,12 @@ services:
       - seq_data:/data
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:80 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   ntfy:
     image: binwiederhier/ntfy:latest
@@ -188,6 +232,49 @@ services:
     command: serve
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:80/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    ports:
+      - "8443:80"
+    environment:
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
+      - SIGNUPS_ALLOWED=${VAULTWARDEN_SIGNUPS_ALLOWED:-true}
+    volumes:
+      - vaultwarden_data:/data
+    networks:
+      - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/alive || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    networks:
+      - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   dashboard:
     build: ./dashboard
@@ -199,11 +286,17 @@ services:
       - INTERNAL_API_KEY=${INTERNAL_API_KEY}
     depends_on:
       agent-platform:
-        condition: service_started
+        condition: service_healthy
       auth-server:
-        condition: service_started
+        condition: service_healthy
     networks:
       - neuron-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:9000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   ollama_data:
@@ -214,6 +307,8 @@ volumes:
   agent_data:
   auth_data:
   ntfy_data:
+  vaultwarden_data:
+  uptime_kuma_data:
 
 networks:
   neuron-network:
